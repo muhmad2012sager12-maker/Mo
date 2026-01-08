@@ -1,0 +1,124 @@
+-- [[ سكربت تعقب الدخول والخروج المطور - الإصدار V44 - مخصص لمحمد ]] --
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Player = Players.LocalPlayer
+
+-- تنظيف النسخ القديمة
+if Player.PlayerGui:FindFirstChild("Tracker_V44") then Player.PlayerGui.Tracker_V44:Destroy() end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "Tracker_V44"; ScreenGui.Parent = Player.PlayerGui; ScreenGui.ResetOnSpawn = false
+
+-- [[ زر "أبو حرب" العائم ]] --
+local ToggleBtn = Instance.new("TextButton", ScreenGui)
+ToggleBtn.Size = UDim2.new(0, 75, 0, 75); ToggleBtn.Position = UDim2.new(0.05, 0, 0.2, 0)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0); ToggleBtn.TextColor3 = Color3.fromRGB(0, 150, 255)
+ToggleBtn.Text = "أبو حرب"; ToggleBtn.Font = Enum.Font.GothamBold; ToggleBtn.TextSize = 14
+ToggleBtn.Active = true; ToggleBtn.Draggable = true
+Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 15)
+local BtnStroke = Instance.new("UIStroke", ToggleBtn); BtnStroke.Color = Color3.fromRGB(0, 150, 255); BtnStroke.Thickness = 2
+
+-- [[ الإطار الرئيسي ]] --
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 350, 0, 450); MainFrame.Position = UDim2.new(0.5, -175, 0.5, -225)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 25); MainFrame.Visible = true; MainFrame.Active = true; MainFrame.Draggable = true
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 15)
+local Stroke = Instance.new("UIStroke", MainFrame); Stroke.Color = Color3.fromRGB(0, 120, 255); Stroke.Thickness = 2
+
+ToggleBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
+
+-- منطقة البحث
+local SearchContainer = Instance.new("Frame", MainFrame)
+SearchContainer.Size = UDim2.new(0.9, 0, 0, 50); SearchContainer.Position = UDim2.new(0.05, 0, 0.1, 0)
+SearchContainer.BackgroundColor3 = Color3.fromRGB(0, 0, 0); SearchContainer.BackgroundTransparency = 0.5; Instance.new("UICorner", SearchContainer)
+
+local SearchBox = Instance.new("TextBox", SearchContainer)
+SearchBox.Size = UDim2.new(0.7, -10, 0, 35); SearchBox.Position = UDim2.new(0.02, 0, 0.15, 0)
+SearchBox.PlaceholderText = "اسم اللاعب..."; SearchBox.Text = ""; SearchBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30); SearchBox.TextColor3 = Color3.new(1, 1, 1); Instance.new("UICorner", SearchBox)
+
+local ConfirmBtn = Instance.new("TextButton", SearchContainer)
+ConfirmBtn.Size = UDim2.new(0.25, 0, 0, 35); ConfirmBtn.Position = UDim2.new(0.73, 0, 0.15, 0)
+ConfirmBtn.Text = "تعقب"; ConfirmBtn.BackgroundColor3 = Color3.fromRGB(0, 80, 200); ConfirmBtn.TextColor3 = Color3.new(1, 1, 1); Instance.new("UICorner", ConfirmBtn)
+
+local ScrollList = Instance.new("ScrollingFrame", MainFrame)
+ScrollList.Size = UDim2.new(0.95, 0, 0.75, 0); ScrollList.Position = UDim2.new(0.025, 0, 0.23, 0)
+ScrollList.BackgroundTransparency = 1; ScrollList.CanvasSize = UDim2.new(0, 0, 0, 0); ScrollList.ScrollBarThickness = 3
+local ListLayout = Instance.new("UIListLayout", ScrollList); ListLayout.Padding = UDim.new(0, 8)
+
+-- [[ الجداول المراقبة ]] --
+local Stats = {} -- يحفظ (مرات الدخول، مرات الخروج)
+
+-- مراقبة السيرفر كامل
+Players.PlayerAdded:Connect(function(p)
+    if not Stats[p.UserId] then Stats[p.UserId] = {joins = 1, leaves = 0}
+    else Stats[p.UserId].joins = Stats[p.UserId].joins + 1 end
+end)
+
+Players.PlayerRemoving:Connect(function(p)
+    if Stats[p.UserId] then Stats[p.UserId].leaves = Stats[p.UserId].leaves + 1 end
+end)
+
+-- تجهيز البيانات للاعبين الموجودين أصلاً
+for _, p in pairs(Players:GetPlayers()) do
+    if not Stats[p.UserId] then Stats[p.UserId] = {joins = 1, leaves = 0} end
+end
+
+local function AddPlayerCard(targetPlayer)
+    local targetName = targetPlayer.Name
+    local targetId = targetPlayer.UserId
+    
+    if ScrollList:FindFirstChild(targetName) then return end
+
+    local Card = Instance.new("Frame", ScrollList)
+    Card.Name = targetName; Card.Size = UDim2.new(1, -10, 0, 115); Card.BackgroundColor3 = Color3.fromRGB(20, 20, 45)
+    Instance.new("UICorner", Card); Instance.new("UIStroke", Card).Color = Color3.fromRGB(0, 100, 255)
+
+    -- زر الإزالة (الحذف) ✅
+    local RemoveBtn = Instance.new("TextButton", Card)
+    RemoveBtn.Size = UDim2.new(0, 25, 0, 25); RemoveBtn.Position = UDim2.new(1, -30, 0, 5)
+    RemoveBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0); RemoveBtn.Text = "X"; RemoveBtn.TextColor3 = Color3.new(1,1,1)
+    Instance.new("UICorner", RemoveBtn); RemoveBtn.MouseButton1Click:Connect(function() Card:Destroy() end)
+
+    local Img = Instance.new("ImageLabel", Card)
+    Img.Size = UDim2.new(0, 75, 0, 75); Img.Position = UDim2.new(0.02, 0, 0.18, 0)
+    Img.Image = "rbxthumb://type=AvatarHeadShot&id="..targetId.."&w=150&h=150"; Instance.new("UICorner", Img)
+
+    local Info = Instance.new("TextLabel", Card)
+    Info.Size = UDim2.new(0.65, 0, 0.9, 0); Info.Position = UDim2.new(0.28, 0, 0.05, 0)
+    Info.BackgroundTransparency = 1; Info.TextColor3 = Color3.new(1, 1, 1); Info.TextXAlignment = Enum.TextXAlignment.Left; Info.TextSize = 13; Info.Font = Enum.Font.SourceSansBold
+
+    local startTime = tick()
+
+    RunService.Heartbeat:Connect(function()
+        if not Card or not Card.Parent then return end
+        local currentPlayer = Players:FindFirstChild(targetName)
+        local data = Stats[targetId] or {joins = 1, leaves = 0}
+        
+        if currentPlayer then
+            local dur = tick() - startTime
+            local h, m, s = math.floor(dur/3600), math.floor((dur%3600)/60), math.floor(dur%60)
+            Info.Text = string.format("👤 الاسم: %s\n📥 دخل: %d مرة | 🚪 طلع: %d مرة\n🟢 الحالة: متصل الآن ✅\n🕒 وقته الحالي: %02d:%02d:%02d", 
+                targetName, data.joins, data.leaves, h, m, s)
+            Info.TextColor3 = Color3.new(1,1,1)
+        else
+            Info.Text = string.format("👤 الاسم: %s\n📥 دخل: %d مرة | 🚪 طلع: %d مرة\n🔴 الحالة: غادر السيرفر ❌", 
+                targetName, data.joins, data.leaves)
+            Info.TextColor3 = Color3.fromRGB(255, 80, 80)
+        end
+    end)
+
+    ScrollList.CanvasSize = UDim2.new(0, 0, 0, ListLayout.AbsoluteContentSize.Y + 20)
+end
+
+ConfirmBtn.MouseButton1Click:Connect(function()
+    local query = SearchBox.Text:lower()
+    if query == "" then return end
+    for _, p in pairs(Players:GetPlayers()) do
+        if p.Name:lower():find(query) or p.DisplayName:lower():find(query) then
+            AddPlayerCard(p)
+            SearchBox.Text = ""
+            break
+        end
+    end
+end)
